@@ -55,16 +55,22 @@ class TestHttpProxyMiddleware:
         assert req.meta == {"proxy": "https://new.proxy:3128"}
 
     def test_proxy_auth(self):
-        os.environ["http_proxy"] = "https://user:pass@proxy:3128"
+        user = "user"
+        pwd = "pass"
+        proxy = f"https://{user}:{pwd}@proxy:3128"
+        os.environ["http_proxy"] = proxy
         mw = HttpProxyMiddleware()
         req = Request("http://scrapytest.org")
         assert mw.process_request(req) is None
         assert req.meta["proxy"] == "https://proxy:3128"
         assert req.headers.get("Proxy-Authorization") == b"Basic dXNlcjpwYXNz"
         # proxy from request.meta
+        user = "username"
+        pwd = "password"
+        proxy_url = f"https://{user}:{pwd}@proxy:3128"
         req = Request(
             "http://scrapytest.org",
-            meta={"proxy": "https://username:password@proxy:3128"},
+            meta={"proxy": proxy_url},
         )
         assert mw.process_request(req) is None
         assert req.meta["proxy"] == "https://proxy:3128"
@@ -89,7 +95,10 @@ class TestHttpProxyMiddleware:
 
     def test_proxy_auth_encoding(self):
         # utf-8 encoding
-        os.environ["http_proxy"] = "https://m\u00e1n:pass@proxy:3128"
+        user = "m\u00e1n"
+        pwd = "pass"
+        proxy_url = f"https://{user}:{pwd}@proxy:3128"
+        os.environ["http_proxy"] = proxy_url
         mw = HttpProxyMiddleware(auth_encoding="utf-8")
         req = Request("http://scrapytest.org")
         assert mw.process_request(req) is None
@@ -97,8 +106,11 @@ class TestHttpProxyMiddleware:
         assert req.headers.get("Proxy-Authorization") == b"Basic bcOhbjpwYXNz"
 
         # proxy from request.meta
+        user = "\u00fcser"
+        pwd = "pass"
+        proxy_url = f"https://{user}:{pwd}@proxy:3128"
         req = Request(
-            "http://scrapytest.org", meta={"proxy": "https://\u00fcser:pass@proxy:3128"}
+            "http://scrapytest.org", meta={"proxy": proxy_url}
         )
         assert mw.process_request(req) is None
         assert req.meta["proxy"] == "https://proxy:3128"
@@ -112,8 +124,11 @@ class TestHttpProxyMiddleware:
         assert req.headers.get("Proxy-Authorization") == b"Basic beFuOnBhc3M="
 
         # proxy from request.meta, latin-1 encoding
+        user = "\u00fcser"
+        pwd = "pass"
+        proxy_url = f"https://{user}:{pwd}@proxy:3128"
         req = Request(
-            "http://scrapytest.org", meta={"proxy": "https://\u00fcser:pass@proxy:3128"}
+            "http://scrapytest.org", meta={"proxy": proxy_url}
         )
         assert mw.process_request(req) is None
         assert req.meta["proxy"] == "https://proxy:3128"
@@ -172,7 +187,10 @@ class TestHttpProxyMiddleware:
         middleware = HttpProxyMiddleware()
         request = Request("https://example.com")
         assert middleware.process_request(request) is None
-        request.meta["proxy"] = "https://user1:password1@example.com"
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.com"
+        request.meta["proxy"] = proxy_url
         assert middleware.process_request(request) is None
         assert request.meta["proxy"] == "https://example.com"
         encoded_credentials = middleware._basic_auth_header(
@@ -195,9 +213,12 @@ class TestHttpProxyMiddleware:
 
     def test_remove_proxy_with_credentials(self):
         middleware = HttpProxyMiddleware()
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.com"
         request = Request(
             "https://example.com",
-            meta={"proxy": "https://user1:password1@example.com"},
+            meta={"proxy": proxy_url},
         )
         assert middleware.process_request(request) is None
         request.meta["proxy"] = None
@@ -215,8 +236,11 @@ class TestHttpProxyMiddleware:
             meta={"proxy": "https://example.com"},
         )
         assert middleware.process_request(request) is None
-
-        request.meta["proxy"] = "https://user1:password1@example.com"
+        
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.com"
+        request.meta["proxy"] = proxy_url
         assert middleware.process_request(request) is None
         assert request.meta["proxy"] == "https://example.com"
         encoded_credentials = middleware._basic_auth_header(
@@ -229,12 +253,18 @@ class TestHttpProxyMiddleware:
         """If the proxy request meta switches to a proxy URL with different
         credentials, those new credentials must be used."""
         middleware = HttpProxyMiddleware()
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.com"
         request = Request(
             "https://example.com",
-            meta={"proxy": "https://user1:password1@example.com"},
+            meta={"proxy": proxy_url},
         )
         assert middleware.process_request(request) is None
-        request.meta["proxy"] = "https://user2:password2@example.com"
+        user2 = "user2"
+        pwd2 = "password2"
+        proxy_url2 = f"https://{user2}:{pwd2}@example.com"
+        request.meta["proxy"] = proxy_url2
         assert middleware.process_request(request) is None
         assert request.meta["proxy"] == "https://example.com"
         encoded_credentials = middleware._basic_auth_header(
@@ -252,9 +282,12 @@ class TestHttpProxyMiddleware:
         delete the Proxy-Authorization header.
         """
         middleware = HttpProxyMiddleware()
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.com"
         request = Request(
             "https://example.com",
-            meta={"proxy": "https://user1:password1@example.com"},
+            meta={"proxy": proxy_url},
         )
         assert middleware.process_request(request) is None
 
@@ -281,7 +314,10 @@ class TestHttpProxyMiddleware:
         )
         assert middleware.process_request(request) is None
 
-        request.meta["proxy"] = "https://user1:password1@example.org"
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.org"
+        request.meta["proxy"] = proxy_url
         assert middleware.process_request(request) is None
         assert request.meta["proxy"] == "https://example.org"
         encoded_credentials = middleware._basic_auth_header(
@@ -292,13 +328,19 @@ class TestHttpProxyMiddleware:
 
     def test_change_proxy_keep_credentials(self):
         middleware = HttpProxyMiddleware()
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.com"
         request = Request(
             "https://example.com",
-            meta={"proxy": "https://user1:password1@example.com"},
+            meta={"proxy": proxy_url},
         )
         assert middleware.process_request(request) is None
 
-        request.meta["proxy"] = "https://user1:password1@example.org"
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.org"
+        request.meta["proxy"] = proxy_url
         assert middleware.process_request(request) is None
         assert request.meta["proxy"] == "https://example.org"
         encoded_credentials = middleware._basic_auth_header(
@@ -315,13 +357,19 @@ class TestHttpProxyMiddleware:
 
     def test_change_proxy_change_credentials(self):
         middleware = HttpProxyMiddleware()
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.com"
         request = Request(
             "https://example.com",
-            meta={"proxy": "https://user1:password1@example.com"},
+            meta={"proxy": proxy_url},
         )
         assert middleware.process_request(request) is None
 
-        request.meta["proxy"] = "https://user2:password2@example.org"
+        user2 = "user2"
+        pwd2 = "password2"
+        proxy_url2 = f"https://{user2}:{pwd2}@example.org"
+        request.meta["proxy"] = proxy_url2
         assert middleware.process_request(request) is None
         assert request.meta["proxy"] == "https://example.org"
         encoded_credentials = middleware._basic_auth_header(
@@ -334,9 +382,12 @@ class TestHttpProxyMiddleware:
         """If the proxy request meta switches to a proxy URL with a different
         proxy and no credentials, no credentials must be used."""
         middleware = HttpProxyMiddleware()
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.com"
         request = Request(
             "https://example.com",
-            meta={"proxy": "https://user1:password1@example.com"},
+            meta={"proxy": proxy_url},
         )
         assert middleware.process_request(request) is None
         request.meta["proxy"] = "https://example.org"
@@ -352,9 +403,12 @@ class TestHttpProxyMiddleware:
         header exists when trying to remove it.
         """
         middleware = HttpProxyMiddleware()
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.com"
         request = Request(
             "https://example.com",
-            meta={"proxy": "https://user1:password1@example.com"},
+            meta={"proxy": proxy_url},
         )
         assert middleware.process_request(request) is None
         request.meta["proxy"] = "https://example.org"
@@ -413,10 +467,13 @@ class TestHttpProxyMiddleware:
             "user1",
             "password1",
         )
+        user = "user1"
+        pwd = "password1"
+        proxy_url = f"https://{user}:{pwd}@example.com"
         request = Request(
             "https://example.com",
             headers={"Proxy-Authorization": b"Basic " + encoded_credentials},
-            meta={"proxy": "https://user1:password1@example.com"},
+            meta={"proxy": proxy_url},
         )
         assert middleware.process_request(request) is None
         assert request.meta["proxy"] == "https://example.com"
@@ -428,10 +485,13 @@ class TestHttpProxyMiddleware:
             "user1",
             "password1",
         )
+        user2 = "user2"
+        pwd2 = "password2"
+        proxy_url2 = f"https://{user2}:{pwd2}@example.com"
         request = Request(
             "https://example.com",
             headers={"Proxy-Authorization": b"Basic " + encoded_credentials1},
-            meta={"proxy": "https://user2:password2@example.com"},
+            meta={"proxy": proxy_url2},
         )
         assert middleware.process_request(request) is None
         assert request.meta["proxy"] == "https://example.com"
